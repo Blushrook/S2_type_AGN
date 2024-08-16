@@ -18,12 +18,12 @@ class HistoGaussData:
         if len(data) == 0:
             logging.warning(f"No finite data points for {title}")
             return None, None, None, None
-
+        clipped_data = light_curve_manager.sigma_clip_data(data)
         plt.figure(figsize=(10, 6))
-        n, bins, _ = plt.hist(data, bins=num_bins, density=True, alpha=0.7)
+        n, bins, _ = plt.hist(clipped_data, bins=num_bins, density=True, alpha=0.7)
 
-        mu, sigma = stats.norm.fit(data)
-        x = np.linspace(np.min(data), np.max(data), 100)
+        mu, sigma = stats.norm.fit(clipped_data)
+        x = np.linspace(np.min(clipped_data), np.max(clipped_data), 100)
         gaussian = stats.norm.pdf(x, mu, sigma)
         plt.plot(x, gaussian, 'r-', lw=2, label='Gaussian fit')
 
