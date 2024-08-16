@@ -36,61 +36,52 @@ class HistoGaussData:
 
         return n, bins, mu, sigma
 
-    def calculate_chi2(self, observed, expected, uncertainties):
-        chi2 = np.sum(((observed - expected)**2) / (uncertainties**2))
-        dof = len(observed) - 1
+    def calculate_chi2(self, clipped_data):
+        chi2 = stats.chi2(clipped_data)
+        dof = len(clipped_data) - 1
         reduced_chi2 = chi2 / dof
         return chi2, reduced_chi2
 
     def calculate_and_plot_histograms(self, filename, obj_name, num_bins=100):
-        data = self.light_curve_data.load_data(filename)
-        if data is not None and 'cts' in data.columns and 'e_cts' in data.columns:
-            clipped_data = self.light_curve_data.sigma_clip_data(data)
-            if clipped_data is not None and not clipped_data.empty:
-                mean_flux = np.mean(clipped_data['cts'])
-                stddev = np.std(clipped_data['cts'])
-                n_points = len(clipped_data)
+        test1_data = (clipped_data['cts'] - stddev) / n_points
+        non_finite = np.sum(~np.isfinite(test1_data))
+        if non_finite > 0:
+            logging.warning(f"{obj_name}: Test 1 data contains {non_finite} non-finite values")
+            test1_data = test1_data[~np.isfinite(test1_data)]
+        n1, bins1, mu1, sigma1 = self.plot_histogram(
+            test1_data,
+            f"Test 1 Histogram for {obj_name}",
+            f"{obj_name}_test1_histogram.png",
+            num_bins
+         )
+
+        chi2_1, reduced_chi2_1 = self.calculate_chi2(
+            test1_data,
+            np.zeros_like(test1_data),
+            np.ones_like(test1_data)
+        )
 
 
-                test1_data = (clipped_data['cts'] - stddev) / n_points
-                non_finite = np.sum(~np.isfinite(test1_data))
-                if non_finite > 0:
-                    logging.warning(f"{obj_name}: Test 1 data contains {non_finite} non-finite values")
-                    test1_data = test1_data[~np.isfinite(test1_data)]
-                n1, bins1, mu1, sigma1 = self.plot_histogram(
-                    test1_data,
-                    f"Test 1 Histogram for {obj_name}",
-                    f"{obj_name}_test1_histogram.png",
-                    num_bins
-                )
+        test2_data = clipped_data['cts'] / clipped_data['e_cts']
+        non_finite = np.sum(~np.isfinite(test2_data))
+        if non_finite > 0:
+            logging.warning(f"{obj_name}: Test 2 data contains {non_finite} non-finite values")
+            test2_data = test2_data[np.isfinite(test2_data)]
 
-                chi2_1, reduced_chi2_1 = self.calculate_chi2(
-                    test1_data,
-                    np.zeros_like(test1_data),
-                    np.ones_like(test1_data)
-                )
+          n2, bins2, mu2, sigma2 = self.plot_histogram(
+            test2_data,
+            f"Test 2 Histogram for {obj_name}",
+            f"{obj_name}_test2_histogram.png",
+            num_bins
+        )
 
+        chi2_2, reduced_chi2_2 = self.calculate_chi2(
+            test2_data,
+            np.zeros_like(test2_data),
+            np.ones_like(test2_data)
+        )
 
-                test2_data = clipped_data['cts'] / clipped_data['e_cts']
-                non_finite = np.sum(~np.isfinite(test2_data))
-                if non_finite > 0:
-                    logging.warning(f"{obj_name}: Test 2 data contains {non_finite} non-finite values")
-                    test2_data = test2_data[np.isfinite(test2_data)]
-
-                n2, bins2, mu2, sigma2 = self.plot_histogram(
-                    test2_data,
-                    f"Test 2 Histogram for {obj_name}",
-                    f"{obj_name}_test2_histogram.png",
-                    num_bins
-                )
-
-                chi2_2, reduced_chi2_2 = self.calculate_chi2(
-                    test2_data,
-                    np.zeros_like(test2_data),
-                    np.ones_like(test2_data)
-                )
-
-                return (chi2_1, reduced_chi2_1), (chi2_2, reduced_chi2_2), mean_flux, stddev
+        return (chi2_1, reduced_chi2_1), (chi2_2, reduced_chi2_2), mean_flux, stddev
             else:
                 logging.warning(f"No data after sigma clipping for {obj_name}")
         else:
