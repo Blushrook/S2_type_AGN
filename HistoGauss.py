@@ -83,8 +83,8 @@ class HistoGaussData:
 
         return (chi2_1, reduced_chi2_1), (chi2_2, reduced_chi2_2), mean_flux, stddev
     else:
-    logging.warning(f"No data after sigma clipping for {obj_name}")
+        logging.warning(f"No data after sigma clipping for {obj_name}")
 else:
-logging.warning(f"Required columns not found in data for {obj_name}")
+    logging.warning(f"Required columns not found in data for {obj_name}")
 return None, None, None, None
 ~                                         
