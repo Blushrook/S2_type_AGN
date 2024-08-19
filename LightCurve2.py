@@ -36,8 +36,8 @@ class LightCurveData:
                 if np.all(new_mask == mask):
                     break
                 mask = new_mask
-            data_clipped = data.iloc[mask]
-            return data_clipped
+            clipped_data = data.iloc[mask]
+            return clipped_data
 
         except KeyError as e:
             logging.error(f"Key error: {e} - Check that 'cts' is in your data")
