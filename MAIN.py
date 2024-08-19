@@ -36,16 +36,18 @@ def process_light_curves(cam, ccd, cat, agn_class, directory, save_directory):
             logging.error(f"Light curve file does not exist: {lc_file_path}")
             continue
 
-        chi2_results = histogram_processor.calculate_and_plot_histograms(lc_file, obj_name)
-
-        if chi2_results[0] is None or chi2_results[1] is None:
-            logging.warning(f"Chi-squared values could not be calculated for {obj_name}")
-            continue
-        (chi2_standard, reduced_chi2_standard), (chi2_normalized, reduced_chi2_normalized), mean_flux, std_dev = chi2_results
         data = light_curve_manager.load_data(lc_file)
         if data is not None:
-            data_clipped = light_curve_manager.sigma_clip_data(data)
-            if data_clipped is not None:
+            clipped_data = light_curve_manager.sigma_clip_data(data)
+            if clipped_data is not None:
+
+                chi2_results = histogram_processor.calculate_and_plot_histograms(clipped_data, obj_name, lc_file)
+
+                if chi2_results[0] is None or chi2_results[1] is None:
+                    logging.warning(f"Chi-squared values could not be calculated for {obj_name}")
+                    continue
+
+                (chi2_normalized, reduced_chi2_normalized), (chi2_standardized, reduced_chi2_standardized), mean_flux, std_dev = chi2_results
 
                 obj_info = {
                     'Name': obj_name,
@@ -53,27 +55,28 @@ def process_light_curves(cam, ccd, cat, agn_class, directory, save_directory):
                     'Agnclass': cat.agnclass[cat.objname == obj_name][0],
                     'RA': cat.ra[cat.objname == obj_name][0],
                     'DEC': cat.dec[cat.objname == obj_name][0],
-                    'Mean Flux': mean_flux,
-                    'Standard Dev': std_dev,
-                    'Sector': '21',
+                    'Mean_Flux': mean_flux,
+                    'Stddev': std_dev,
+                    'Sector': '07',
                     'Camera': f'{cam}',
                     'CCD': f'{ccd}',
-                    '$\\chi^2$ Standard': chi2_standard,
-                    '$\\chi^2_\\nu$ Standard': reduced_chi2_standard,
-                    '$\\chi^2$ Normalized': chi2_normalized,
-                    '$\\chi^2_\\nu$ Normalized': reduced_chi2_normalized
+                    'Chi2_Normalized': chi2_normalized,
+                    'Chi2_reduced_Normalized': reduced_chi2_normalized,
+                    'Chi2_Standardized': chi2_standardized,
+                    'Chi2_reduced_Standardized': reduced_chi2_standardized
                 }
                 results.append(obj_info)
-                light_curve_manager.plot_light_curve(data_clipped, obj_name + f'LightCurve', f"{obj_name}_LightCurve.png", agn_class)
+                light_curve_manager.plot_light_curve(clipped_data, obj_name + f'LightCurve', f"{obj_name}_LightCurve.png", agn_class)
     return results
+
 
 def main():
     all_results = []
     for cam in range(1, 5):
         for ccd in range(1, 5):
-            camera_files = [f"HyperLEDA/s21/hyperleda_s21_cam{cam}.txt"]
-            directory = f'{root_directory}/sector21/cam{cam}_ccd{ccd}/lc_hyperleda'
-            save_directory = f'{root_directory}/plots/Sector21'
+            camera_files = [f"HyperLEDA/s07/hyperleda_s07_cam{cam}.txt"]
+            directory = f'{root_directory}/Sector07/cam{cam}_ccd{ccd}/lc_hyperleda'
+            save_directory = f'{root_directory}/plots/Sector07'
 
             light_curve_manager = LightCurveData(directory, save_directory)
 
@@ -86,11 +89,11 @@ def main():
 
 
     if all_results:
-        headers = ["Name", "Objtype", "Agnclass", "RA", "DEC", "Mean Flux", "Standard Dev", "Weighted Std Dev",
-                   "Sector", "Camera", "CCD", "$\\chi^2$ Standard", "$\\chi^2_\\nu$ Standard",
-                   "$\\chi^2$ Normalized", "$\\chi^2_\\nu$ Normalized"]
+        headers = ["Name", "Objtype", "Agnclass", "RA", "DEC", "Mean_Flux", "Stddev",
+                   "Sector", "Camera", "CCD", "Chi2_Normalized", "Chi2_reduced_Normalized",
+                   "Chi2_Standardized", "Chi2_reduced_Standardized"]
 
-        with open('processed_light_curves_sector21.txt', 'w') as file:
+        with open('processed_light_curves_sector07.txt', 'w') as file:
             header_line = "".join(f"{header:<20}" for header in headers)
             file.write(header_line + "\n")
             for result in all_results:
