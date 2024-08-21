@@ -1,85 +1,116 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
+from scipy import stats
+import glob
 import os
+import pandas as pd
 
+def process_file(file_path):
+    try:
+        with open(file_path, 'r') as f:
+            header = f.readline().strip()
+        columns = header.split()
+        data = pd.read_csv(file_path, delim_whitespace=True, names=columns, skiprows=1)
 
-input_file = 'processed_light_curves_sector03.txt'
-output_file = 'reformatted_light_curves_sector03.txt'
+    except Exception as e:
+        print(f"Error reading {file_path}: {str(e)}")
+        return None, None
 
+    print(f"\nColumns in {file_path}:")
+    print(data.columns.tolist())
 
-def reformat_file(input_filename, output_filename):
-    with open(input_filename, 'r') as infile, open(output_filename, 'w') as outfile:
+    if 'Chi2_reduced_Normalized' not in data.columns or 'Chi2_reduced_Standardized' not in data.columns:
+        print(f"Error: Required columns not found in {file_path}")
+        return None, None
 
-        next(infile)
+    normalized_chi2 = data['Chi2_reduced_Normalized'].values
+    standardized_chi2 = data['Chi2_reduced_Standardized'].values
 
+    return normalized_chi2, standardized_chi2
 
-        for line in infile:
-            parts = line.strip().split()
-            name = parts[0]
-            rest = parts[1:7]
-            rest += ['']
-            rest += parts[7:]
-            outfile.write(f"{name:50s}|{'|'.join(rest)}\n")
+def plot_histogram_with_pdf(chi2_values, title, output_path):
+    if chi2_values is None or len(chi2_values) == 0:
+        print(f"Warning: No data to plot for {title}")
+        return
+    chi2_values = np.array(chi2_values)
+    plt.figure(figsize=(15, 6))
+    plt.subplot(121)
+    positive_chi2 = chi2_values[chi2_values > 0]
 
-    print(f"Reformatted file saved as {output_filename}")
+    if len(positive_chi2) > 0:
+        n, bins, _ = plt.hist(positive_chi2, bins=30, density=True, alpha=0.7, edgecolor='black')
+        x = np.linspace(min(positive_chi2), max(positive_chi2), 100)
+        df = np.mean(positive_chi2)
+        chi2_pdf = stats.chi2.pdf(x, df)
 
+        max_n = np.max(n) if len(n) > 0 else 1
+        max_pdf = np.max(chi2_pdf) if len(chi2_pdf) > 0 else 1
+        if max_pdf > 0 and max_n > 0:
+            scaling_factor = max_n / max_pdf
+            plt.plot(x, chi2_pdf * scaling_factor, 'r-', lw=2, label=f'Chi2 PDF (df={df: .2f})')
 
-reformat_file(input_file, output_file)
+        plt.title(f'{title} - Full Distribution')
+        plt.xlabel('Reduced Chi2')
+        plt.ylabel('Density')
+        plt.legend()
+    else:
+        plt.text(0.5, 0.5, "No positive values to plot", ha='center', va='center')
 
+    plt.subplot(122)
+    top_50 = np.sort(chi2_values)[-50:]
+    plt.hist(top_50, bins=10, edgecolor='black')
+    plt.title(f'{title} - Top 50 Values')
+    plt.xlabel('Reduced Chi2')
+    plt.ylabel('Frequency')
 
-column_names = [
-    'Name', 'Objtype', 'Agnclass', 'RA', 'DEC', 'Mean Flux', 'Standard Dev',
-    'Weighted Std Dev', 'Sector', 'Camera', 'CCD', 'chi2 Standard',
-    'chi2_nu Standard', 'chi2 Normalized', 'chi2_nu Normalized'
-]
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
 
+    print(f"Plot saved: {output_path}")
 
-data = pd.read_csv(output_file, sep='|', names=column_names, header=None)
+def main():
+    txt_files = glob.glob('*.txt')
+    total_files = len(txt_files)
+    valid_files = 0
 
-print("\nFirst few rows of the DataFrame:")
-print(data.head())
+    all_normalized_chi2 = np.array([])
+    all_standardized_chi2 = np.array([])
 
-print("\nData types of the columns:")
-print(data.dtypes)
+    for file_path in txt_files:
+        normalized_chi2, standardized_chi2 = process_file(file_path)
 
+        if normalized_chi2 is not None and standardized_chi2 is not None:
+            valid_files += 1
 
-chi2_standard = pd.to_numeric(data['chi2_nu Standard'], errors='coerce')
-chi2_normalized = pd.to_numeric(data['chi2_nu Normalized'], errors='coerce')
+            print(f"\nFile: {file_path}")
+            print(f"Normalized Chi2: {len(normalized_chi2)} values, {np.sum(normalized_chi2 > 0)} positive")
+            print(f"Standardized Chi2: {len(standardized_chi2)} values, {np.sum(standardized_chi2 > 0)} positive")
 
+            all_normalized_chi2 = np.concatenate([all_normalized_chi2, normalized_chi2])
+            all_standardized_chi2 = np.concatenate([all_standardized_chi2, standardized_chi2])
 
-def print_stats(name, data):
-    print(f"\n{name} stats:")
-    print(f"Min: {data.min()}, Max: {data.max()}, Mean: {data.mean()}")
-    print(f"Number of NaN values: {pd.isna(data).sum()}")
-    print(f"Number of infinite values: {np.isinf(data).sum()}")
+            output_dir = f'output_{os.path.splitext(file_path)[0]}'
+            os.makedirs(output_dir, exist_ok=True)
 
-print_stats("Standard chi2", chi2_standard)
-print_stats("Normalized chi2", chi2_normalized)
+            plot_histogram_with_pdf(normalized_chi2, f'Normalized Chi2 - {os.path.basename(file_path)}',
+                                    f'{output_dir}/normalized_chi2_histogram.png')
+            plot_histogram_with_pdf(standardized_chi2, f'Standardized Chi2 - {os.path.basename(file_path)}',
+                                    f'{output_dir}/standardized_chi2_histogram.png')
+        else:
+            print(f"\nSkipping {file_path} due to errors.")
 
+    if valid_files > 0:
+        os.makedirs('combined_output', exist_ok=True)
+        plot_histogram_with_pdf(all_normalized_chi2, 'Combined Normalized Chi2',
+                                'combined_output/combined_normalized_chi2_histogram.png')
+        plot_histogram_with_pdf(all_standardized_chi2, 'Combined Standardized Chi2',
+                                'combined_output/combined_standardized_chi2_histogram.png')
 
-plt.figure(figsize=(16, 8))
+    print(f"\nProcessing complete.")
+    print(f"Total files processed: {total_files}")
+    print(f"Files with valid data: {valid_files}")
+    print("Check the output directories for results.")
 
-
-plt.subplot(1, 2, 1)
-plt.hist(chi2_standard.dropna(), bins=30, edgecolor='black')
-plt.title('Standardized Reduced $\chi^2$')
-plt.xlabel('Reduced $\chi^2$')
-plt.ylabel('Frequency')
-
-
-plt.subplot(1, 2, 2)
-plt.hist(chi2_normalized.dropna(), bins=30, edgecolor='black')
-plt.title('Normalized Reduced $\chi^2$')
-plt.xlabel('Reduced $\chi^2$')
-plt.ylabel('Frequency')
-
-plt.tight_layout()
-plt.savefig('reduced_chi2_histograms_sector03.png', dpi=300, bbox_inches='tight')
-
-print("\nHistogram saved as 'reduced_chi2_histograms_sector03.png'")
-
-
-os.remove(output_file)
-print(f"Temporary file {output_file} removed.")
-~                                                  
+if __name__ == "__main__":
+    main()
