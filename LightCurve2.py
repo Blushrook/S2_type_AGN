@@ -89,3 +89,5 @@ class LightCurveData:
         else:
             logging.error("Columns 'cts' or 'e_cts' not found in the data.")
             return None, None, None
+
+~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ~                                                 
