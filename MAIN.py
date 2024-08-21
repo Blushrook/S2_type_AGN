@@ -57,7 +57,7 @@ def process_light_curves(cam, ccd, cat, agn_class, directory, save_directory):
                     'DEC': cat.dec[cat.objname == obj_name][0],
                     'Mean_Flux': mean_flux,
                     'Stddev': std_dev,
-                    'Sector': '07',
+                    'Sector': '06',
                     'Camera': f'{cam}',
                     'CCD': f'{ccd}',
                     'Chi2_Normalized': chi2_normalized,
@@ -74,9 +74,9 @@ def main():
     all_results = []
     for cam in range(1, 5):
         for ccd in range(1, 5):
-            camera_files = [f"HyperLEDA/s07/hyperleda_s07_cam{cam}.txt"]
-            directory = f'{root_directory}/Sector07/cam{cam}_ccd{ccd}/lc_hyperleda'
-            save_directory = f'{root_directory}/plots/Sector07'
+            camera_files = [f"HyperLEDA/s06/hyperleda_s06_cam{cam}.txt"]
+            directory = f'{root_directory}/sector06/cam{cam}_ccd{ccd}/lc_hyperleda'
+            save_directory = f'{root_directory}/plots/Sector06'
 
             light_curve_manager = LightCurveData(directory, save_directory)
 
@@ -93,11 +93,18 @@ def main():
                    "Sector", "Camera", "CCD", "Chi2_Normalized", "Chi2_reduced_Normalized",
                    "Chi2_Standardized", "Chi2_reduced_Standardized"]
 
-        with open('processed_light_curves_sector07.txt', 'w') as file:
-            header_line = "".join(f"{header:<20}" for header in headers)
+        max_widths = {header: len(header) for header in headers}
+        for result in all_results:
+            for header in headers:
+                value = str(result.get(header, ''))
+                max_widths[header] = max(max_widths[header], len(value))
+
+        with open('processed_light_curves_sector06.txt', 'w') as file:
+            header_line = "".join(f"{header:<{max_widths[header] + 2}}" for header in headers)
             file.write(header_line + "\n")
+
             for result in all_results:
-                row = "".join(f"{str(result.get(header, '')):<20}" for header in headers)
+                row = "".join(f"{str(result.get(header, '')):<{max_widths[header] + 2}}" for header in headers)
                 file.write(row + "\n")
 
 if __name__ == "__main__":
