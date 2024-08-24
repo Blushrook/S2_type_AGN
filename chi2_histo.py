@@ -39,15 +39,12 @@ def plot_histogram_with_pdf(chi2_values, title, output_path):
 
     if len(positive_chi2) > 0:
         n, bins, _ = plt.hist(positive_chi2, bins=30, density=True, alpha=0.7, edgecolor='black')
-        x = np.linspace(min(positive_chi2), max(positive_chi2), 100)
-        df = np.mean(positive_chi2)
+        adjusted_chi2 = positive_chi2 * 1000
+        x = np.linspace(min(adjusted_chi2)max(adjusted_chi2), 100)
+        df = len(positive_chi2)
         chi2_pdf = stats.chi2.pdf(x, df)
 
-        max_n = np.max(n) if len(n) > 0 else 1
-        max_pdf = np.max(chi2_pdf) if len(chi2_pdf) > 0 else 1
-        if max_pdf > 0 and max_n > 0:
-            scaling_factor = max_n / max_pdf
-            plt.plot(x, chi2_pdf * scaling_factor, 'r-', lw=2, label=f'Chi2 PDF (df={df: .2f})')
+        plt.plot(x, chi2_pdf / 1000, 'r-', lw=2, label=f'Chi2 PDF (df={df: .2f})')
 
         plt.title(f'{title} - Full Distribution')
         plt.xlabel('Reduced Chi2')
