@@ -25,28 +25,30 @@ def process_file(file_path):
     if 'Chi_Normalized' not in data.columns or 'Chi2_Standardized' no in data.columns:
         print(f"Error: Required columns not found in {file_path}")
 
-    normalized_chi2 = data['Chi2_reduced_Normalized'].values
-    standardized_chi2 = data['Chi2_reduced_Standardized'].values
+    normalized_reduced_chi2 = data['Chi2_reduced_Normalized'].values
+    standardized_reduced_chi2 = data['Chi2_reduced_Standardized'].values
+    normalized_chi2 = data['Chi2_Normalized'].values
+    stnadardized_chi2 = data['Chi2_Standardized'}.values
 
-    return normalized_chi2, standardized_chi2
+    return normalized_reduced_chi2, standardized_reduced_chi2, normalized_chi2, standardized_chi2
 
 def plot_histogram_with_pdf(chi2_values, title, output_path):
     if chi2_values is None or len(chi2_values) == 0:
         print(f"Warning: No data to plot for {title}")
         return
+    reduced_chi2values = np.array(reduced_chi2_values)
     chi2_values = np.array(chi2_values)
     plt.figure(figsize=(15, 6))
     plt.subplot(121)
-    positive_chi2 = chi2_values[chi2_values > 0]
 
-    if len(positive_chi2) > 0:
-        n, bins, _ = plt.hist(positive_chi2, bins=30, density=True, alpha=0.7, edgecolor='black')
-        adjusted_chi2 = positive_chi2 * 1000
-        x = np.linspace(min(adjusted_chi2)max(adjusted_chi2), 100)
-        df = len(positive_chi2)
-        chi2_pdf = stats.chi2.pdf(x, df)
+    if len(reduced_chi2_values) > 0:
+        n, bins, _ = plt.hist(reduced_chi2_values, bins=30, density=True, alpha=0.7, edgecolor='black')
+        x = np.linspace(0, max(reduced_chi2_values), 1000)
+        df = chi2_values / reduced_chi2_values
+        chi2_x = x * df
+        chi2_pdf = stats.chi2.pdf(chi2_x, df)
 
-        plt.plot(x, chi2_pdf / 1000, 'r-', lw=2, label=f'Chi2 PDF (df={df: .2f})')
+        plt.plot(x, chi2_pdf, 'r-', lw=2, label=f'Chi2 PDF (df={df: .2f})')
 
         plt.title(f'{title} - Full Distribution')
         plt.xlabel('Reduced Chi2')
@@ -73,37 +75,45 @@ def main():
     total_files = len(txt_files)
     valid_files = 0
 
+    all_normalized_reduced_chi2 = np.array([])
+    all_standardized_reduced_chi2 = np.array([])
     all_normalized_chi2 = np.array([])
     all_standardized_chi2 = np.array([])
 
     for file_path in txt_files:
-        normalized_chi2, standardized_chi2 = process_file(file_path)
+        normalized_reduced_chi2, standardized_reduced_chi2, normalized_chi2, standardized_chi2 = process_file(file_path)
 
-        if normalized_chi2 is not None and standardized_chi2 is not None:
+        if normalized_reduced_chi2 is not None and standardized_reduced_chi2 is not None:
             valid_files += 1
 
             print(f"\nFile: {file_path}")
             print(f"Normalized Chi2: {len(normalized_chi2)} values, {np.sum(normalized_chi2 > 0)} positive")
             print(f"Standardized Chi2: {len(standardized_chi2)} values, {np.sum(standardized_chi2 > 0)} positive")
 
+            all_normalized_reduced_chi2 = np.concatenate([all_normalized_reduced_chi2, normalized_reduced_chi2])
+            all standardized_reduced_chi2 = np.concatenate([all_standardized_reduced_chi2, standardized_reduced_chi2])
             all_normalized_chi2 = np.concatenate([all_normalized_chi2, normalized_chi2])
             all_standardized_chi2 = np.concatenate([all_standardized_chi2, standardized_chi2])
 
             output_dir = f'output_{os.path.splitext(file_path)[0]}'
             os.makedirs(output_dir, exist_ok=True)
 
-            plot_histogram_with_pdf(normalized_chi2, f'Normalized Chi2 - {os.path.basename(file_path)}',
+            plot_histogram_with_pdf(normalized_reduced_chi2, normalized_chi2,
+                                    f'Normalized Chi2 - {os.path.basename(file_path)}',
                                     f'{output_dir}/normalized_chi2_histogram.png')
-            plot_histogram_with_pdf(standardized_chi2, f'Standardized Chi2 - {os.path.basename(file_path)}',
+            plot_histogram_with_pdf(standardized_reduced_chi2, standardized_chi2,
+                                    f'Standardized Chi2 - {os.path.basename(file_path)}',
                                     f'{output_dir}/standardized_chi2_histogram.png')
         else:
             print(f"\nSkipping {file_path} due to errors.")
 
     if valid_files > 0:
         os.makedirs('combined_output', exist_ok=True)
-        plot_histogram_with_pdf(all_normalized_chi2, 'Combined Normalized Chi2',
+        plot_histogram_with_pdf(all_normalized_reduced_chi2, all_normalized_chi2,
+                                'Combined Normalized Chi2',
                                 'combined_output/combined_normalized_chi2_histogram.png')
-        plot_histogram_with_pdf(all_standardized_chi2, 'Combined Standardized Chi2',
+        plot_histogram_with_pdf(all_standardized_reduced_chi2, all_standardized_chi2, 
+                                'Combined Standardized Chi2',
                                 'combined_output/combined_standardized_chi2_histogram.png')
 
     print(f"\nProcessing complete.")
