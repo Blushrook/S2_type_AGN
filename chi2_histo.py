@@ -22,17 +22,17 @@ def process_file(file_path):
     if 'Chi2_reduced_Normalized' not in data.columns or 'Chi2_reduced_Standardized' not in data.columns:
         print(f"Error: Required reduced columns not found in {file_path}")
         return None, None
-    if 'Chi_Normalized' not in data.columns or 'Chi2_Standardized' no in data.columns:
+    if 'Chi2_Normalized' not in data.columns or 'Chi2_Standardized' not in data.columns:
         print(f"Error: Required columns not found in {file_path}")
 
     normalized_reduced_chi2 = data['Chi2_reduced_Normalized'].values
     standardized_reduced_chi2 = data['Chi2_reduced_Standardized'].values
     normalized_chi2 = data['Chi2_Normalized'].values
-    stnadardized_chi2 = data['Chi2_Standardized'}.values
+    standardized_chi2 = data['Chi2_Standardized'].values
 
     return normalized_reduced_chi2, standardized_reduced_chi2, normalized_chi2, standardized_chi2
 
-def plot_histogram_with_pdf(chi2_values, title, output_path):
+def plot_histogram_with_pdf(reduced_chi2_values, chi2_values, title, output_path):
     if chi2_values is None or len(chi2_values) == 0:
         print(f"Warning: No data to plot for {title}")
         return
@@ -44,7 +44,7 @@ def plot_histogram_with_pdf(chi2_values, title, output_path):
     if len(reduced_chi2_values) > 0:
         n, bins, _ = plt.hist(reduced_chi2_values, bins=30, density=True, alpha=0.7, edgecolor='black')
         x = np.linspace(0, max(reduced_chi2_values), 1000)
-        df = chi2_values / reduced_chi2_values
+        df = len(chi2_values / reduced_chi2_values)
         chi2_x = x * df
         chi2_pdf = stats.chi2.pdf(chi2_x, df)
 
@@ -91,7 +91,7 @@ def main():
             print(f"Standardized Chi2: {len(standardized_chi2)} values, {np.sum(standardized_chi2 > 0)} positive")
 
             all_normalized_reduced_chi2 = np.concatenate([all_normalized_reduced_chi2, normalized_reduced_chi2])
-            all standardized_reduced_chi2 = np.concatenate([all_standardized_reduced_chi2, standardized_reduced_chi2])
+            all_standardized_reduced_chi2 = np.concatenate([all_standardized_reduced_chi2, standardized_reduced_chi2])
             all_normalized_chi2 = np.concatenate([all_normalized_chi2, normalized_chi2])
             all_standardized_chi2 = np.concatenate([all_standardized_chi2, standardized_chi2])
 
@@ -112,7 +112,7 @@ def main():
         plot_histogram_with_pdf(all_normalized_reduced_chi2, all_normalized_chi2,
                                 'Combined Normalized Chi2',
                                 'combined_output/combined_normalized_chi2_histogram.png')
-        plot_histogram_with_pdf(all_standardized_reduced_chi2, all_standardized_chi2, 
+        plot_histogram_with_pdf(all_standardized_reduced_chi2, all_standardized_chi2,
                                 'Combined Standardized Chi2',
                                 'combined_output/combined_standardized_chi2_histogram.png')
 
