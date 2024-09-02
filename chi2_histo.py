@@ -20,8 +20,10 @@ def process_file(file_path):
     print(data.columns.tolist())
 
     if 'Chi2_reduced_Normalized' not in data.columns or 'Chi2_reduced_Standardized' not in data.columns:
-        print(f"Error: Required columns not found in {file_path}")
+        print(f"Error: Required reduced columns not found in {file_path}")
         return None, None
+    if 'Chi_Normalized' not in data.columns or 'Chi2_Standardized' no in data.columns:
+        print(f"Error: Required columns not found in {file_path}")
 
     normalized_chi2 = data['Chi2_reduced_Normalized'].values
     standardized_chi2 = data['Chi2_reduced_Standardized'].values
