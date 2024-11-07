@@ -115,7 +115,6 @@ def main():
         plot_histogram_with_pdf(all_standardized_reduced_chi2, all_standardized_chi2,
                                 'Combined Standardized Chi2',
                                 'combined_output/combined_standardized_chi2_histogram.png')
-
     print(f"\nProcessing complete.")
     print(f"Total files processed: {total_files}")
     print(f"Files with valid data: {valid_files}")
